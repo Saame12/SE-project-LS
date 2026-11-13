@@ -28,7 +28,7 @@ Phạm vi: **3.4 Quản lý cửa hàng** và **3.6 Bán hàng trực tuyến**.
 |---|---|---|
 | Danh mục chung, thương hiệu, ngành hàng | Hoàn thiện | API dùng chung products/categories/brands; tìm kiếm, lọc, sắp xếp giá |
 | Chi tiết sản phẩm | Hoàn thiện | Thông số, ảnh local, giá và tồn tại cửa hàng đang chọn |
-| Chọn cửa hàng xử lý | Hoàn thiện | Chọn trước khi mua; checkout giữ đúng cửa hàng; chuyển cửa hàng sẽ kiểm tra lại tồn |
+| Chọn cửa hàng xử lý | Hoàn thiện | Chọn trong chi tiết sản phẩm hoặc giỏ hàng; checkout giữ đúng cửa hàng; chuyển cửa hàng sẽ kiểm tra lại tồn |
 | Kiểm tra tồn theo cửa hàng | Hoàn thiện | Tồn MySQL; báo hết hàng, chặn thêm quá tồn, kiểm tra lại trong transaction khi đặt đơn |
 | Giỏ hàng | Hoàn thiện | Thêm/tăng/giảm/xóa; giỏ lưu trình duyệt cho tiện dùng; đơn/tồn không lưu localStorage |
 | Đăng ký/đăng nhập/đăng xuất | Hoàn thiện | Khách mới được đăng ký; mật khẩu hash; cookie session; chỉ xem/yêu cầu với đơn của mình |
@@ -48,7 +48,7 @@ Phạm vi: **3.4 Quản lý cửa hàng** và **3.6 Bán hàng trực tuyến**.
 |---|---|---|
 | Yêu cầu bổ sung hàng | Chờ công ty xử lý | Duyệt cấp công ty, tồn kho tổng, điều chuyển, nhận hàng và đối chiếu chứng từ |
 | Chuyển khoản / hoàn tiền | Quản lý ghi nhận thủ công | Tài khoản ngân hàng thực tế, webhook xác thực, đối soát, thực hiện hoàn tiền |
-| VNPAY/MoMo/Visa/Trả góp | Chưa khả dụng; đã bỏ các nhãn thanh toán chưa tích hợp khỏi danh sách khả dụng | Hợp đồng dịch vụ, sandbox, callback chữ ký và idempotency |
+| VNPAY/MoMo/Visa/Trả góp | Giữ nhãn minh họa ở footer theo giao diện gốc; bấm nhãn sẽ báo Đang phát triển; không có trong lựa chọn checkout | Hợp đồng dịch vụ, sandbox, callback chữ ký và idempotency |
 | Giao hàng | Quản lý tự cập nhật Đang giao / Hoàn tất | API vận chuyển, phí theo địa chỉ, mã vận đơn, theo dõi giao nhận tự động |
 | Chính sách bảo hành/vận chuyển/hoàn tiền/trả góp ở footer | Mở thông báo Đang phát triển | Nội dung chính sách được phê duyệt và luồng tiếp nhận tương ứng; không còn link im lặng |
 | Hạng thành viên → quyền lợi tự động | Hiển thị hạng | Chính sách tích điểm, đổi điểm, ưu đãi hạng; hiện chưa tự giảm thêm theo hạng |
@@ -72,3 +72,15 @@ Dữ liệu kiểm thử được tạo có chủ đích và lưu thật trong M
 ## Sửa lỗi phiên đăng nhập giữa hai trang
 
 Phiên bản ngày 13/11/2026 tách cookie `v0sid_customer` và `v0sid_manager`. Mỗi giao diện gửi phạm vi phiên qua `X-Session-Scope`; máy chủ vẫn kiểm tra vai trò thật và quyền cửa hàng từ database. Đăng nhập/đăng xuất quản lý không ghi đè hoặc đăng xuất khách hàng ở tab mua hàng. Cookie cũ chỉ được chấp nhận đúng vai trò. Trước khi mở và gửi checkout, giao diện đọc lại phiên; máy chủ chặn đơn nếu tài khoản khách đã đổi từ lúc mở biểu mẫu. Bộ test kiểm tra cùng một cookie jar có cả hai phiên vẫn đặt được đơn bằng khách, quản lý vẫn bị chặn đặt đơn, đăng xuất quản lý vẫn giữ phiên khách. Sau cập nhật cần khởi động lại Node.js và tải lại hai trang.
+
+## Khôi phục giao diện khách hàng gốc
+
+Dùng index3.html/style1.css/style3.css do người dùng cung cấp làm chuẩn. Hai CSS gốc giữ nguyên từng byte. HTML chỉ thêm phạm vi phiên customer, CSS bổ trợ cho chức năng backend và nạp selling-app.js thay app3.js demo. Khôi phục header, hero, footer, nút chip danh mục, thẻ sản phẩm, popup chi tiết hai cột, giỏ hàng trượt bên phải và trang đăng nhập/đăng ký theo các lớp CSS gốc. Không chèn khối thông tin quản trị/cửa hàng phía trên banner. Chọn cửa hàng trong popup sản phẩm hoặc giỏ hàng. Giá, tồn, khuyến mãi và đơn vẫn lấy từ MySQL; không hiển thị giá gạch ngang/nhãn giảm giá giả khi danh mục chung chưa có giá so sánh. Các nhãn thanh toán chưa tích hợp ở footer chỉ là minh họa giao diện, có thông báo rõ khi bấm. Hồ sơ khách hàng hiện chỉ xem; cập nhật hồ sơ và đổi mật khẩu chưa được nối backend.
+
+## Lịch sử và lộ trình theo giao diện gốc
+
+- Nút Đơn hàng khi đã đăng nhập mở Trung tâm tài khoản → Lịch sử mua hàng, không mở popup danh sách mới. Thẻ đơn dùng đúng bố cục .ord/.oh/.steps của giao diện cũ: mã, trạng thái, ba bước, người nhận, sản phẩm, voucher, tổng tiền.
+- Nút Xem lộ trình đơn hàng sau đặt hàng mở đúng popup tra cứu với mã vừa tạo. Liên kết Tra cứu đơn hàng mở popup .modal.tk gốc, tìm theo mã hoặc số điện thoại trong phạm vi tài khoản đang đăng nhập.
+- Trạng thái chi tiết được gom thành ba mốc để giữ bố cục cũ. Nhận tại cửa hàng dùng các mốc sẵn sàng nhận/nhận thành công; giao hàng dùng đang vận chuyển/giao thành công. Hủy/trả là mốc kết thúc riêng. Thời gian lấy từ order_history; nếu dữ liệu cũ thiếu sự kiện, chỉ báo Đã qua bước này, không tạo thời gian giả.
+- Các thao tác hủy/trả vẫn dùng API và quyền cũ. Chi tiết xử lý được thu gọn ngay dưới thẻ đơn, không chuyển sang giao diện bảng mới. Form yêu cầu sử dụng popup gốc.
+- Giữ tab Đổi mật khẩu theo bố cục cũ, đánh dấu Đang phát triển và vô hiệu hóa form vì backend đổi mật khẩu chưa có.

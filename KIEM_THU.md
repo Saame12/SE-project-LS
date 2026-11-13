@@ -4,7 +4,7 @@ Mở trang khách hàng tại http://localhost:3009/ và trang quản lý tại 
 
 ## 1. Danh mục và tồn từng cửa hàng
 
-1. Ở trang khách, chọn Quận 1, chọn ngành hàng SSD: sản phẩm Kingston KC3000 hết hàng, không thể thêm giỏ.
+1. Ở trang khách, mở chi tiết sản phẩm hoặc giỏ hàng để chọn Quận 1, sau đó chọn ngành hàng SSD: sản phẩm Kingston KC3000 hết hàng, không thể thêm giỏ.
 2. Chuyển sang Thủ Đức: sản phẩm có tồn, có thể mua.
 3. Thử lọc thương hiệu Kingston, tìm tên/SKU, sắp xếp giá.
 4. Quản lý Thủ Đức điều chỉnh tồn SSD với lý do; khách bấm Làm mới tồn kho để thấy số mới.
@@ -12,7 +12,7 @@ Mở trang khách hàng tại http://localhost:3009/ và trang quản lý tại 
 ## 2. Đặt đơn và nhận tại cửa hàng
 
 1. Khách `nam@example.com` chọn Quận 1, mua một RAM Corsair (3.290.000 đ).
-2. Mở giỏ → Tiến hành đặt hàng → nhận tại cửa hàng → tiền mặt → mã WELCOME10.
+2. Mở giỏ hàng trượt bên phải → chọn cửa hàng/nhận tại cửa hàng → tiền mặt → nhập mã WELCOME10 và bấm Áp dụng → Xác Nhận Đặt Hàng Ngay.
 3. Tổng sau giảm phải là **2.961.000 đ**; tồn RAM giảm 1 ngay khi đặt hàng.
 4. Quản lý `manager.q1@v0tech.vn` → Đơn hàng trực tuyến → Làm mới → tìm mã mới.
 5. Xem đơn → phân công Bùi Anh Tuấn → Đã xác nhận → Đang chuẩn bị → Sẵn sàng nhận.
@@ -69,3 +69,12 @@ npm.cmd test
 ```
 
 Cần MySQL đang chạy và cổng 3010 trống. Bộ test tạo database `v0_store_test_<pid>` riêng, seed, chạy API, sau đó xóa database thử nghiệm. Bao gồm kiểm tra hai khách cùng mua sản phẩm chỉ còn một đơn vị: đúng một đơn thành công, đơn còn lại nhận 409, tồn không âm.
+
+## 8. Đối chiếu giao diện lịch sử và lộ trình
+
+1. Đăng nhập khách, bấm Đơn hàng: phải mở Trung tâm tài khoản với tab Lịch sử mua hàng được chọn, có đầy đủ thẻ đơn và thanh ba bước, không xuất hiện popup danh sách mới.
+2. Qua Thông tin cá nhân rồi bấm lại Lịch sử mua hàng: trạng thái tab đổi đúng, dữ liệu được nạp lại từ MySQL.
+3. Footer → Tra cứu đơn hàng: popup có ô Mã đơn hoặc Số điện thoại và nút Kiểm tra ngay như bản gốc. Tra mã đơn của mình hoặc số điện thoại nhận hàng sẽ hiển thị thẻ có lộ trình.
+4. Thử mã đơn thuộc khách khác: không hiển thị. Khi chưa đăng nhập, nhập mã sẽ chuyển sang đăng nhập và sau đó quay lại đúng mã đã tra.
+5. Đơn mới chỉ sáng bước đầu; đơn giao/nhận sáng bước tương ứng; đơn hủy/trả có mốc kết thúc. Các ngày/giờ phải phản ánh lịch sử thật.
+6. Sau đặt hàng, nút Xem lộ trình đơn hàng phải mở đúng mã vừa tạo. Yêu cầu hủy/trả từ popup sẽ quay lại đúng màn hình tra cứu sau khi gửi thành công.

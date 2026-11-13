@@ -16,3 +16,46 @@ export function table(headers,rows){return `<div class="card live-table"><table>
 export function orderDetail(o){return `<p><strong>${esc(o.code)}</strong> · ${esc(o.store_name)} · ${esc(label(o.status))}</p><p>${esc(o.customer_name)} · ${esc(o.phone)}<br>${o.fulfillment==='pickup'?'Nhận tại cửa hàng':'Giao hàng: '+esc(o.address)}<br>${o.payment_method==='cash'?'Tiền mặt khi nhận hàng':'Chuyển khoản — quản lý đối soát thủ công'} · ${esc(label(o.payment_status))}</p>${table(['Sản phẩm','SL','Giá'],o.items.map(i=>[esc(i.name),i.quantity,money(i.price)]))}<p>Tạm tính: ${money(o.subtotal)} · Giảm: ${money(o.discount)}${o.promo_code?' ('+esc(o.promo_code)+')':''}<br><strong>Tổng: ${money(o.total)}</strong></p><h3>Lịch sử xử lý</h3><ol class="timeline">${o.history.map(h=>`<li>${date(h.created_at)} · ${esc(label(h.status))}<br>${esc(h.actor)}: ${esc(h.note)}</li>`).join('')}</ol>${o.requests.length?'<h3>Yêu cầu của khách</h3>'+o.requests.map(r=>`<p>${r.type==='cancel'?'Hủy đơn':'Trả hàng'} · ${esc(label(r.status))}: ${esc(r.reason)}<br>${esc(r.note)}</p>`).join(''):''}`;}
 
 
+
+// Customer order cards retain the original .ord / .oh / .steps presentation.
+// The three visible milestones summarize real backend events, never advance orders.
+export function customerOrderProgress(order) {
+  const history = order.history || [];
+  const pickup = order.fulfillment === 'pickup';
+  const terminal = ['cancelled', 'returned'].includes(order.status);
+  const latest = status => [...history].reverse().find(h => h.status === status)?.created_at;
+  if (terminal) return [{
+    text: order.status === 'cancelled' ? 'Đã hủy đơn hàng' : 'Đã trả hàng',
+    reached: true, terminal: true, at: latest(order.status) || null
+  }];
+  const stage = {pending: 0, confirmed: 0, processing: 0, ready: 1, shipping: 1, completed: 2}[order.status] ?? -1;
+  return [
+    {text: 'Chờ xử lý', reached: stage >= 0, at: order.created_at || null},
+    {text: pickup ? 'Sẵn sàng nhận hàng' : 'Đang vận chuyển', reached: stage >= 1, at: history.find(h => h.status === (pickup ? 'ready' : 'shipping'))?.created_at || null},
+    {text: pickup ? 'Nhận hàng thành công' : 'Giao thành công', reached: stage >= 2, at: latest('completed') || null}
+  ];
+}
+export function customerOrderCard(order) {
+  const statusClass = ['cancelled', 'returned'].includes(order.status) ? 's3' : order.status === 'completed' ? 's2' : ['shipping', 'ready'].includes(order.status) ? 's1' : 's0';
+  const progress = customerOrderProgress(order);
+  const requests = order.requests || [];
+  const requestLabel = value => ({pending: 'Chờ duyệt', approved: 'Đã duyệt', rejected: 'Từ chối'}[value] || value);
+  const controls = [
+    ['pending', 'confirmed', 'processing'].includes(order.status) && !requests.some(r => r.type === 'cancel') ? `<button class="btn-secondary" data-action="cancel" data-id="${esc(order.id)}">Yêu cầu hủy</button>` : '',
+    order.status === 'completed' && !requests.some(r => r.type === 'return') ? `<button class="btn-secondary" data-action="return" data-id="${esc(order.id)}">Yêu cầu trả hàng</button>` : ''
+  ].join('');
+  return `<div class="ord" data-order-code="${esc(order.code)}">
+    <div class="oh"><b>Mã đơn: <span style="color:var(--brand-primary)">${esc(order.code)}</span></b><span class="tag ${statusClass}">${esc(label(order.status))}</span></div>
+    <ol class="steps" aria-label="Lộ trình đơn hàng">${progress.map(step => `<li class="${step.reached ? 'on' : ''}${step.terminal ? ' bad' : ''}"><span>${esc(step.text)}</span><small>${step.at && step.reached ? date(step.at) : step.reached ? 'Đã qua bước này' : 'Đang chờ'}</small></li>`).join('')}</ol>
+    <div class="customer-order-recipient">Đặt lúc: ${date(order.created_at)} · Khách hàng: <b>${esc(order.customer_name)}</b> (${esc(order.phone)})<br>
+      ${order.fulfillment === 'pickup' ? 'Nhận tại cửa hàng: ' + esc(order.store_name) : 'Địa chỉ giao: ' + esc(order.address) + '<br>Cửa hàng xử lý: ' + esc(order.store_name)}<br>
+      Thanh toán: <b>${order.payment_method === 'cash' ? 'Thanh toán khi nhận hàng (COD)' : 'Chuyển khoản ngân hàng'}</b> · ${esc(label(order.payment_status))}
+    </div>
+    <ul class="customer-order-items">${order.items.map(item => `<li>${esc(item.name)} <b>×${Number(item.quantity)}</b></li>`).join('')}</ul>
+    ${order.discount > 0 ? `<div class="oh customer-order-discount"><span>Voucher áp dụng (${esc(order.promo_code || '')})</span><span>−${money(order.discount)}</span></div>` : ''}
+    <div class="oh customer-order-total"><span>Tổng thanh toán</span><span>${money(order.total)}</span></div>
+    ${requests.map(r => `<p class="customer-order-request">${r.type === 'cancel' ? 'Yêu cầu hủy' : 'Yêu cầu trả hàng'}: <b>${esc(requestLabel(r.status))}</b><br>${esc(r.reason)}${r.note ? '<br>Phản hồi cửa hàng: ' + esc(r.note) : ''}</p>`).join('')}
+    <details class="customer-order-audit"><summary>Chi tiết xử lý đơn hàng</summary><ol>${(order.history || []).map(h => `<li><span>${date(h.created_at)} · ${esc(label(h.status))}</span><br><small>${esc(h.actor)}: ${esc(h.note)}</small></li>`).join('')}</ol></details>
+    ${controls ? `<div class="customer-order-actions">${controls}</div>` : ''}
+  </div>`;
+}
