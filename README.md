@@ -53,12 +53,12 @@ Các đơn `DH-SEED-001` và `DH-SEED-003` đã hoàn tất để thử báo cá
 - Máy chủ tự xác định cửa hàng từ tài khoản quản lý; không tin store_id do trình duyệt gửi cho nghiệp vụ quản lý.
 - Giá, giảm giá và tổng tiền được tính lại ở backend từ danh mục chung.
 - Đặt hàng giữ/trừ **tồn khả dụng** ngay trong transaction với khóa dòng `FOR UPDATE`; không trừ lần hai khi chuyển trạng thái.
-- Duyệt hủy/trả toàn đơn hoàn tồn một lần trong transaction và lưu lịch sử.
+- Khách hủy đơn Chờ xác nhận được hủy ngay và hoàn tồn một lần trong transaction; đơn Đã xác nhận/Đang chuẩn bị gửi yêu cầu để quản lý chọn Tiếp tục xử lý hoặc Chấp nhận hủy → Hoàn tất hủy. Duyệt trả toàn đơn cũng hoàn tồn một lần và lưu lịch sử.
 - Đơn phải có nhân viên phụ trách mới được xác nhận; chỉ hoàn tất sau khi thu đủ tiền được quản lý xác nhận.
 - Nhận tại cửa hàng: Chờ xác nhận → Đã xác nhận → Đang chuẩn bị → Sẵn sàng nhận → Hoàn tất.
 - Giao hàng: Chờ xác nhận → Đã xác nhận → Đang chuẩn bị → Đang giao → Hoàn tất.
 - Chặn chuyển sai bước, sửa đơn đã kết thúc và xử lý lặp yêu cầu đã duyệt.
-- Yêu cầu hủy đang chờ duyệt sẽ chặn tiếp tục xử lý đơn đến khi quản lý duyệt/từ chối.
+- Yêu cầu hủy đang chờ chưa khóa xử lý. Tiếp tục xử lý sẽ từ chối yêu cầu với ghi chú; Chấp nhận hủy chuyển Đang hủy và khóa bán hàng. Hoàn tất hủy mới hoàn tồn.
 - Doanh thu/hoa hồng tính trên đơn hoàn tất, lọc theo ngày tạo đơn. Đơn trả hàng bị loại. Tỷ lệ hoa hồng chốt lúc phân công. Đây không phải sổ kế toán theo ngày ghi nhận doanh thu/hoàn tiền.
 - Hạng thành viên: dưới 10 triệu = Thành viên, từ 10 triệu = Vàng, từ 30 triệu = Kim cương. Tính từ đơn hoàn tất, không tự cộng ưu đãi hạng.
 - Tiền mặt và chuyển khoản được quản lý đối soát thủ công. Chưa kết nối ngân hàng/cổng thanh toán; `refunded` là ghi nhận đã xử lý hoàn tiền ngoài hệ thống.
@@ -100,7 +100,8 @@ Mật khẩu ứng dụng được hash bằng scrypt với salt riêng; session
 | Khách yêu cầu hủy/trả | POST /api/orders/:id/requests |
 | Dữ liệu cửa hàng | GET /api/manager/data |
 | Phân công, trạng thái, thu tiền | PATCH /api/manager/orders/:id |
-| Duyệt/từ chối hủy/trả | POST /api/manager/requests/:id/resolve |
+| Chấp nhận hủy | POST /api/manager/orders/:id/accept-cancel |
+| Hoàn tất hủy / duyệt-từ chối trả | POST /api/manager/requests/:id/resolve |
 | Tồn, bổ sung, nhân viên, khuyến mãi | POST /api/manager/inventory, /replenishments, /staff, /promotions |
 | Báo cáo | GET /api/manager/reports?from=2026-01-01&to=2026-12-31 |
 

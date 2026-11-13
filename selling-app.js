@@ -220,8 +220,10 @@ async function track(query = '') {
 function requestOrder(type, id) {
   const returnView = {...orderView};
   closePanels();
-  const title = type === 'cancel' ? 'Yêu cầu hủy đơn' : 'Yêu cầu trả sản phẩm';
-  $('#ov').innerHTML = '<div class="modal tk" role="dialog" aria-modal="true" aria-label="' + title + '"><div class="modal-top"><h2 class="customer-tracking-title">' + title + '</h2><button class="close-btn" data-action="close-panels" aria-label="Đóng yêu cầu">×</button></div><form id="customer-order-request" class="customer-order-request-form"><label class="fl">Lý do yêu cầu<input name="reason" required maxlength="255"></label><p class="err" role="alert"></p><button type="submit">Gửi yêu cầu</button></form></div>';
+  const immediate = type === 'cancel' && orderCache.find(o => o.id === Number(id))?.status === 'pending';
+  const title = type === 'cancel' ? (immediate ? 'Hủy đơn' : 'Yêu cầu hủy đơn') : 'Yêu cầu trả sản phẩm';
+  const explanation = immediate ? '<p class="customer-tracking-description">Đơn đang chờ xác nhận. Xác nhận hủy sẽ hủy đơn ngay và hoàn tồn, không cần chờ cửa hàng duyệt.</p>' : '';
+  $('#ov').innerHTML = '<div class="modal tk" role="dialog" aria-modal="true" aria-label="' + title + '"><div class="modal-top"><h2 class="customer-tracking-title">' + title + '</h2><button class="close-btn" data-action="close-panels" aria-label="Đóng yêu cầu">×</button></div>' + explanation + '<form id="customer-order-request" class="customer-order-request-form"><label class="fl">Lý do yêu cầu<input name="reason" required maxlength="255"></label><p class="err" role="alert"></p><button type="submit">' + (immediate ? 'Xác nhận hủy đơn' : 'Gửi yêu cầu') + '</button></form></div>';
   $('#ov').classList.add('on');
   $('[name=reason]').focus();
   $('#customer-order-request').onsubmit = async e => {
@@ -229,8 +231,9 @@ function requestOrder(type, id) {
     const form = e.currentTarget, submit = $('[type=submit]', form);
     submit.disabled = true;
     try {
-      await api('/orders/' + id + '/requests', 'POST', {type, reason: new FormData(form).get('reason')});
-      toast('Đã gửi yêu cầu; chờ cửa hàng xét duyệt');
+      const result = await api('/orders/' + id + '/requests', 'POST', {type, reason: new FormData(form).get('reason')});
+      localStorage.setItem('v0_orders_changed',String(Date.now())+'-'+Math.random());
+      toast(type === 'cancel' ? (result.status === 'cancelled' ? 'Đã hủy đơn và hoàn tồn kho.' : 'Đơn đang chờ duyệt hủy; cửa hàng sẽ xem xét yêu cầu.') : 'Đã gửi yêu cầu trả hàng; chờ cửa hàng xét duyệt');
       if (returnView.type === 'track') await track(returnView.query);
       else await orders();
     } catch (err) { $('.err', form).textContent = err.message; }
@@ -303,3 +306,11 @@ for (const tag of document.querySelectorAll('.pay-tag')) {
   }
 }
 refresh().catch(err => { $('#g').innerHTML = `<div class="empty-state"><p>${esc(err.message)}. Vui lòng thử tải lại trang.</p></div>`; toast(err.message); });
+
+async function reloadCustomerOrders(){
+  if($('#ov').classList.contains('on')&&$('#customer-order-request'))return;
+  if($('#ov').classList.contains('on')&&$('#tf'))return track(orderView.query);
+  if(!$('#acct').hidden&&$('#acct [data-action="orders"][aria-pressed="true"]'))return orders();
+}
+window.addEventListener('focus',()=>run(reloadCustomerOrders));
+window.addEventListener('storage',e=>{if(e.key==='v0_orders_changed')run(reloadCustomerOrders);});

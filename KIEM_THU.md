@@ -29,12 +29,12 @@ Mở trang khách hàng tại http://localhost:3009/ và trang quản lý tại 
 
 ## 4. Hủy đơn
 
-1. Đặt đơn mới ở Quận 1, ghi tồn trước/sau.
-2. Khách → Đơn hàng → Yêu cầu hủy, nhập lý do.
-3. Quản lý → Yêu cầu hủy & trả hàng → xem đơn → Duyệt và nhập ghi chú.
-4. Khách thấy Đã hủy; tồn trở về trước đặt; đơn hủy không cộng doanh thu.
-5. Thử từ chối một yêu cầu khác: lưu ghi chú từ chối, tồn vẫn giữ cho đơn, tiếp tục xử lý được.
-6. Mỗi loại yêu cầu chỉ gửi một lần/đơn ở phiên bản này; không có vòng gửi lại sau khi bị từ chối.
+1. Đặt đơn mới và giữ ở Chờ xác nhận; ghi tồn trước/sau đặt. Khách bấm Hủy đơn, nhập lý do → Xác nhận hủy đơn. Đơn phải chuyển ngay Đã hủy, tồn về số trước đặt, không cần cửa hàng duyệt.
+2. Quản lý mở đơn đó: chỉ còn Xem chi tiết/lịch sử, không có phân công, thu tiền, chuyển trạng thái hay Hoàn tất hủy. Gọi PATCH trực tiếp cũng bị 409.
+3. Bấm hủy lặp hoặc gửi hai yêu cầu đồng thời: chỉ một lần thành công, không hoàn tồn thêm.
+4. Với đơn đã được xác nhận/đang chuẩn bị, khách gửi Yêu cầu hủy: hiển thị Chờ duyệt hủy. Quản lý vẫn được xử lý; bấm Tiếp tục xử lý sẽ từ chối yêu cầu và chuyển bước bán hàng. Hoặc bấm Chấp nhận hủy để khóa đơn, sau đó Hoàn tất hủy mới hủy và hoàn tồn.
+5. Với đơn Sẵn sàng nhận/Đang giao: không có nút hủy; có hướng dẫn liên hệ cửa hàng kèm tên và địa chỉ. Gọi trực tiếp API yêu cầu hủy phải bị chặn, không thay đổi đơn/tồn.
+6. Đơn hủy không cộng doanh thu; đơn đã hoàn tất chỉ được gửi yêu cầu trả hàng.
 
 ## 5. Trả toàn đơn
 
@@ -78,3 +78,13 @@ Cần MySQL đang chạy và cổng 3010 trống. Bộ test tạo database `v0_s
 4. Thử mã đơn thuộc khách khác: không hiển thị. Khi chưa đăng nhập, nhập mã sẽ chuyển sang đăng nhập và sau đó quay lại đúng mã đã tra.
 5. Đơn mới chỉ sáng bước đầu; đơn giao/nhận sáng bước tương ứng; đơn hủy/trả có mốc kết thúc. Các ngày/giờ phải phản ánh lịch sử thật.
 6. Sau đặt hàng, nút Xem lộ trình đơn hàng phải mở đúng mã vừa tạo. Yêu cầu hủy/trả từ popup sẽ quay lại đúng màn hình tra cứu sau khi gửi thành công.
+
+## 9. Hủy hai bước ở Đã xác nhận / Đang chuẩn bị
+
+1. Khách gửi yêu cầu, thẻ đơn hiển thị Chờ duyệt hủy. Quản lý vẫn có Phân công, Thu tiền, Tiếp tục xử lý và Chấp nhận hủy; chưa có Hoàn tất hủy.
+2. Thử một đơn: bấm Tiếp tục xử lý. Đơn chuyển bước tiếp theo, yêu cầu bị từ chối với lý do được ghi tự động. Khách không còn thấy Chờ duyệt hủy và tồn không tăng.
+3. Thử đơn khác: bấm Chấp nhận hủy. Đơn Đang hủy; phân công/thu tiền/chuyển trạng thái bị khóa và xuất hiện Hoàn tất hủy. Tồn chưa tăng.
+4. Bấm Hoàn tất hủy: đơn Đã hủy, tồn tăng đúng một lần, không còn thao tác bán hàng.
+5. Thử gọi hoàn tất trước chấp nhận, thao tác bán hàng sau chấp nhận, từ chối sau chấp nhận, bấm lặp hoặc sai cửa hàng: tất cả bị chặn.
+6. Kiểm tra cả danh sách đơn và trang Yêu cầu hủy & trả hàng để bảo đảm không có đường duyệt hủy một bước.
+7. Khởi động lại Node.js và Ctrl+F5 hai trang sau khi cập nhật.

@@ -1,5 +1,19 @@
 # Trạng thái chức năng — 13/11/2026
 
+## Quy tắc hủy đơn hiện hành
+
+| Trạng thái | Khách hàng | Quản lý / hệ thống |
+|---|---|---|
+| Chờ xác nhận | Hủy đơn → Xác nhận hủy đơn | Hủy ngay, hoàn tồn đúng một lần, lưu người hủy; quản lý chỉ xem chi tiết/lịch sử |
+| Đã xác nhận / Đang chuẩn bị | Yêu cầu hủy → Chờ duyệt hủy | Vẫn được phân công/thu tiền; Tiếp tục xử lý sẽ từ chối yêu cầu và ghi lý do, hoặc bấm Chấp nhận hủy |
+| Đang hủy (đã chấp nhận) | Hiển thị cửa hàng đã chấp nhận, chờ hoàn tất | Khóa thao tác bán hàng; chỉ còn Hoàn tất hủy, chưa hoàn tồn ở bước chấp nhận |
+| Sẵn sàng nhận / Đang giao | Không hủy trực tiếp; hiển thị hướng dẫn liên hệ cửa hàng và địa chỉ | API cũng chặn hủy trực tiếp; không tự đổi trạng thái hoặc hoàn tồn |
+| Hoàn tất | Yêu cầu trả toàn đơn | Xử lý trả hàng theo luồng hiện có |
+| Đã hủy / Đã trả hàng | Chỉ xem chi tiết và lịch sử | Khóa mọi thao tác xử lý bán hàng; gửi lặp không hoàn tồn thêm |
+
+Luồng Chờ xác nhận không tạo yêu cầu chờ quản lý: service_requests ghi trạng thái approved cùng ghi chú khách hủy ngay, còn orders chuyển cancelled trong cùng transaction với hoàn tồn và ghi lịch sử. Cả hai luồng hủy dùng chung hàm hoàn tồn. Ghi nhận hoàn tiền vẫn theo cơ chế thủ công đã mô tả, chưa tích hợp ngân hàng. Bộ kiểm thử hiện có 11 test, tất cả đạt; đã kiểm tra giao diện bằng database riêng.
+
+
 Phạm vi: **3.4 Quản lý cửa hàng** và **3.6 Bán hàng trực tuyến**. Hoàn thiện ở đây có nghĩa đã có giao diện, API và dữ liệu lưu MySQL cho phạm vi mô tả; không đồng nghĩa đã tích hợp dịch vụ thương mại bên ngoài.
 
 ## 3.4 — Quản lý cửa hàng
@@ -64,7 +78,7 @@ Dữ liệu kiểm thử được tạo có chủ đích và lưu thật trong M
 
 ## Kết quả kiểm tra trong lần bàn giao
 
-- `npm.cmd test`: 4 test chạy qua, trong đó test tích hợp thực hiện các API trên database MySQL riêng.
+- `npm.cmd test`: 12 test chạy qua, trong đó test tích hợp thực hiện các API trên database MySQL riêng.
 - Đã kiểm tra: sai mật khẩu/hash, quy tắc chuyển trạng thái, hai nhánh giao/nhận, đơn không đủ hàng, số lượng âm, không tin giá gửi từ trình duyệt, khuyến mãi, quyền khách/quản lý/cửa hàng khác, giữ tồn đồng thời, hủy/trả hoàn tồn và chặn duyệt lặp, doanh số/hoa hồng, nhân viên, yêu cầu bổ sung, đăng ký tài khoản.
 - Kiểm tra trình duyệt: đăng nhập khách → thêm RAM → dùng WELCOME10 → tạo đơn → yêu cầu hủy → đăng nhập quản lý Quận 1 → duyệt hủy. Đơn kiểm thử giao diện được giữ trong database với lịch sử để xem lại.
 - Chưa kiểm thử tích hợp dịch vụ thanh toán, vận chuyển, hóa đơn vì các dịch vụ này chưa được triển khai.
@@ -84,3 +98,15 @@ Dùng index3.html/style1.css/style3.css do người dùng cung cấp làm chuẩ
 - Trạng thái chi tiết được gom thành ba mốc để giữ bố cục cũ. Nhận tại cửa hàng dùng các mốc sẵn sàng nhận/nhận thành công; giao hàng dùng đang vận chuyển/giao thành công. Hủy/trả là mốc kết thúc riêng. Thời gian lấy từ order_history; nếu dữ liệu cũ thiếu sự kiện, chỉ báo Đã qua bước này, không tạo thời gian giả.
 - Các thao tác hủy/trả vẫn dùng API và quyền cũ. Chi tiết xử lý được thu gọn ngay dưới thẻ đơn, không chuyển sang giao diện bảng mới. Form yêu cầu sử dụng popup gốc.
 - Giữ tab Đổi mật khẩu theo bố cục cũ, đánh dấu Đang phát triển và vô hiệu hóa form vì backend đổi mật khẩu chưa có.
+
+## Luồng hủy hai bước sau khi khách gửi yêu cầu
+
+1. Đã xác nhận/Đang chuẩn bị → khách gửi yêu cầu → khách thấy Chờ duyệt hủy. Quản lý vẫn phân công, thu tiền được; yêu cầu chưa khóa đơn.
+2. Quản lý chọn Tiếp tục xử lý: chuyển sang trạng thái bán hàng tiếp theo và từ chối yêu cầu hủy trong cùng transaction. Khách thấy trạng thái mới và ghi chú Quản lý tiếp tục xử lý đơn, không chấp nhận yêu cầu hủy. Không hoàn tồn.
+3. Quản lý chọn Chấp nhận hủy: orders.status chuyển cancelling (Đang hủy), ghi người/thời điểm chấp nhận. Khóa toàn bộ PATCH nghiệp vụ bán hàng; không được từ chối hoặc mở lại đơn sau bước này. Chưa hoàn tồn.
+4. Chỉ sau Chấp nhận hủy mới xuất hiện Hoàn tất hủy: chuyển cancelled, hoàn tồn đúng một lần và kết thúc yêu cầu. API cũng chặn bỏ qua bước chấp nhận, bấm lặp hoặc thao tác sai cửa hàng.
+5. Danh sách Yêu cầu hủy & trả hàng có cùng hai nút theo từng giai đoạn, không có đường duyệt một bước để bỏ qua chấp nhận. Luồng trả hàng vẫn theo xử lý duyệt/từ chối hiện có.
+
+Trạng thái cancelling dùng cột VARCHAR status hiện có, không cần đổi schema. service_requests vẫn pending trong lúc đã chấp nhận nhưng chưa hoàn tất; giao diện nhận biết bằng trạng thái Đang hủy của đơn. Mọi quyết định được lưu order_history. Tự cập nhật giữa các tab cùng trình duyệt; khi dùng trình duyệt khác, quay lại tab/bấm Làm mới để lấy trạng thái.
+
+Bộ kiểm thử hiện có 12 test, tất cả đạt: trước chấp nhận vẫn được thao tác; tiếp tục xử lý tự từ chối yêu cầu; sau chấp nhận chặn phân công/thu tiền/chuyển trạng thái và từ chối hủy; chỉ hoàn tồn lúc hoàn tất, không hoàn lặp. Đã kiểm tra giao diện trước/sau Chấp nhận hủy bằng database tạm riêng.
