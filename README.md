@@ -12,7 +12,7 @@
 Yêu cầu Node.js 20.19+ và MySQL 8.0+ đang chạy. Cổng MySQL là **3306** mặc định; cổng **3009 là của website**, không phải của MySQL.
 
 ```powershell
-cd C:\Users\sangl\source\repos\SE-project
+cd C:\Users\...
 npm.cmd install
 Copy-Item .env.example .env   # Chỉ thực hiện nếu chưa có .env
 # Điền DB_PASSWORD trong .env bằng mật khẩu MySQL của bạn
