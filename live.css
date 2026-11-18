@@ -54,3 +54,7 @@ body[data-role="customer"] .ord .oh b{min-width:0;overflow-wrap:anywhere}
 body[data-role="customer"] .ord .tag{flex-shrink:0}
 body[data-role="customer"] .account-actions [data-action="logout"]{color:var(--accent-sale)}
 body[data-role="customer"] #acct button:disabled{opacity:.45;cursor:not-allowed}
+body[data-role="customer"] .fl select{width:100%;padding:11px 14px;background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:var(--radius-md);color:var(--text-main)}
+body[data-role="employee"] .main .live-form{max-width:780px;margin-top:20px}
+body[data-role="employee"] details{line-height:1.8}
+body[data-role="employee"] [data-quantity]{width:80px}

@@ -1,90 +1,66 @@
-# Kịch bản kiểm tra thủ công
+# Nghiệm thu phạm vi chính — 18/11/2026
 
-Mở trang khách hàng tại http://localhost:3009/ và trang quản lý tại http://localhost:3009/manager.html trong hai tab cùng trình duyệt (phiên khách hàng và quản lý đã được tách riêng). Mật khẩu ứng dụng demo: `Demo@12345`.
+Chạy db:setup, khởi động server 3009 và Ctrl+F5. Tài khoản ứng dụng/mật khẩu ở [README.md](README.md). Các giao dịch dưới đây là mô phỏng; dữ liệu thay đổi được lưu MySQL, nên dùng dữ liệu thử khi lặp nhiều lần.
 
-## 1. Danh mục và tồn từng cửa hàng
+## 1. Khách hàng và ưu đãi
 
-1. Ở trang khách, mở chi tiết sản phẩm hoặc giỏ hàng để chọn Quận 1, sau đó chọn ngành hàng SSD: sản phẩm Kingston KC3000 hết hàng, không thể thêm giỏ.
-2. Chuyển sang Thủ Đức: sản phẩm có tồn, có thể mua.
-3. Thử lọc thương hiệu Kingston, tìm tên/SKU, sắp xếp giá.
-4. Quản lý Thủ Đức điều chỉnh tồn SSD với lý do; khách bấm Làm mới tồn kho để thấy số mới.
+1. Mở trang khách: bố cục, giỏ trượt, Trung tâm tài khoản và lịch sử giữ giao diện cũ. Chưa đăng nhập mà thêm giỏ phải chuyển đăng nhập.
+2. Dùng Nam, sửa hồ sơ: ngày sinh/giới tính/nghề nghiệp/địa chỉ; tải lại vẫn lưu. Thử email trùng, ngày sinh tương lai và số điện thoại sai phải bị chặn.
+3. Lọc danh mục/hãng/tên và khoảng giá; chọn SSD: Quận 1 hết hàng, Thủ Đức còn hàng.
+4. Quản lý tạo mã cho người 18–30 tuổi, giới tính và nghề nghiệp cụ thể; khách đủ hồ sơ được áp dụng, người không đủ bị từ chối. Thử mã sai cửa hàng/hết hạn/chưa đủ đơn tối thiểu và mã chỉ offline.
+5. Với RAM 3.290.000 đ và WELCOME10 còn hiệu lực: giảm 329.000 đ, tổng 2.961.000 đ. Server bỏ qua giá/tổng giả do client gửi.
+6. Bấm Đơn hàng → đúng tab Lịch sử mua hàng. Tra cứu mã/số điện thoại chỉ trả đơn của khách đang đăng nhập; lộ trình ba mốc phản ánh lịch sử, không sáng Đã nhận hàng chỉ vì đang giao.
 
-## 2. Đặt đơn và nhận tại cửa hàng
+## 2. Đơn online trả trước
 
-1. Khách `nam@example.com` chọn Quận 1, mua một RAM Corsair (3.290.000 đ).
-2. Mở giỏ hàng trượt bên phải → chọn cửa hàng/nhận tại cửa hàng → tiền mặt → nhập mã WELCOME10 và bấm Áp dụng → Xác Nhận Đặt Hàng Ngay.
-3. Tổng sau giảm phải là **2.961.000 đ**; tồn RAM giảm 1 ngay khi đặt hàng.
-4. Quản lý `manager.q1@v0tech.vn` → Đơn hàng trực tuyến → Làm mới → tìm mã mới.
-5. Xem đơn → phân công Bùi Anh Tuấn → Đã xác nhận → Đang chuẩn bị → Sẵn sàng nhận.
-6. Thử hoàn tất khi chưa thu tiền: hệ thống phải từ chối.
-7. Xác nhận đã nhận đủ tiền → chuyển Hoàn tất. Khách mở lịch sử thấy các bước.
-8. Báo cáo Quận 1 tăng doanh thu 2.961.000 đ, hoa hồng Tuấn tăng **44.415 đ** (1,5%). Tồn không bị trừ thêm lần nữa.
+1. Chọn thẻ hoặc ngân hàng/QR, đặt đơn. Tồn giảm ngay; đơn Chờ xác nhận/Chưa thanh toán.
+2. Mô phỏng thất bại: chưa thu tiền, quản lý chưa xác nhận được. Thử lại thành công: lưu mã tham chiếu, trạng thái Đã thu tiền.
+3. Quản lý phân công nhân viên đúng cửa hàng → Đã xác nhận → Đang chuẩn bị → Sẵn sàng nhận hoặc Đang giao → Đã nhận hàng → Hoàn tất.
+4. Thử bỏ qua Đã nhận hàng hoặc phân công người cửa hàng khác: API từ chối. Chuyển trạng thái không trừ tồn thêm.
+5. Sau khi đóng màn hình thanh toán chưa trả tiền, khách mở lịch sử vẫn có nút tiếp tục thanh toán mô phỏng.
 
-## 3. Giao tận nơi và chuyển khoản
+## 3. COD và hóa đơn offline
 
-1. Tạo đơn khác, chọn Giao tận nơi; bỏ địa chỉ trống phải không đặt được.
-2. Nhập địa chỉ, chọn chuyển khoản. Đơn ban đầu vẫn Chưa thanh toán.
-3. Quản lý phân công → xác nhận → chuẩn bị → đang giao.
-4. Sau khi thực tế nhận tiền, quản lý xác nhận thu tiền → Hoàn tất. Hệ thống không tự kết nối ngân hàng.
+1. Online COD không cần thanh toán trước Đã xác nhận; quản lý không được thu tiền trước Đã nhận hàng.
+2. Đã nhận hàng chưa thu tiền: chưa Hoàn tất được. Xác nhận thu tiền mô phỏng rồi Hoàn tất.
+3. Mở employee.html, đăng nhập staff.q1: chỉ thấy tồn Quận 1, không có điều chỉnh kho.
+4. Thêm sản phẩm vào bill, thay số lượng, kiểm tra tạm tính; nhập khách/số điện thoại và COD. Tạo bill: gắn đúng nhân viên/cửa hàng; tồn giảm và quản lý nhìn thấy kênh Tại cửa hàng.
+5. Nhân viên ghi nhận khách nhận hàng → quản lý thu tiền → Hoàn tất. Bill thẻ/ngân hàng offline đã mô phỏng thanh toán ngay khi lập; vẫn cần nhận hàng và hoàn tất.
+6. Mã có điều kiện nhân khẩu học yêu cầu nhân viên nhập thông tin và xác nhận đối chiếu giấy tờ. Không xác nhận thì server từ chối.
+7. Nhân viên khác không thấy/sửa bill này; nhân viên không được chốt Hoàn tất hoặc điều chỉnh kho. Ngừng làm việc phải vô hiệu quyền nhân viên ngay cả phiên cũ.
 
-## 4. Hủy đơn
+## 4. Hủy theo tài liệu
 
-1. Đặt đơn mới và giữ ở Chờ xác nhận; ghi tồn trước/sau đặt. Khách bấm Hủy đơn, nhập lý do → Xác nhận hủy đơn. Đơn phải chuyển ngay Đã hủy, tồn về số trước đặt, không cần cửa hàng duyệt.
-2. Quản lý mở đơn đó: chỉ còn Xem chi tiết/lịch sử, không có phân công, thu tiền, chuyển trạng thái hay Hoàn tất hủy. Gọi PATCH trực tiếp cũng bị 409.
-3. Bấm hủy lặp hoặc gửi hai yêu cầu đồng thời: chỉ một lần thành công, không hoàn tồn thêm.
-4. Với đơn đã được xác nhận/đang chuẩn bị, khách gửi Yêu cầu hủy: hiển thị Chờ duyệt hủy. Quản lý vẫn được xử lý; bấm Tiếp tục xử lý sẽ từ chối yêu cầu và chuyển bước bán hàng. Hoặc bấm Chấp nhận hủy để khóa đơn, sau đó Hoàn tất hủy mới hủy và hoàn tồn.
-5. Với đơn Sẵn sàng nhận/Đang giao: không có nút hủy; có hướng dẫn liên hệ cửa hàng kèm tên và địa chỉ. Gọi trực tiếp API yêu cầu hủy phải bị chặn, không thay đổi đơn/tồn.
-6. Đơn hủy không cộng doanh thu; đơn đã hoàn tất chỉ được gửi yêu cầu trả hàng.
+1. COD mới Chờ xác nhận: gửi Yêu cầu hủy, phải hiện Chờ duyệt hủy, chưa hoàn tồn và chưa tự Đã hủy.
+2. Quản lý chọn Tiếp tục xử lý: yêu cầu bị từ chối, lưu lý do và chuyển bước; tồn không tăng.
+3. Đơn khác chọn Chấp nhận hủy: chuyển Đang hủy, khóa phân công/thu tiền/chuyển bước, chỉ còn Hoàn tất hủy. Chưa hoàn tồn ở bước chấp nhận.
+4. Hoàn tất hủy: Đã hủy, hoàn tồn đúng một lần, ghi hoàn tiền mô phỏng nếu đã trả trước; API thao tác lại phải bị chặn.
+5. COD chưa thu tiền ở Sẵn sàng nhận/Đang giao/Đã nhận hàng vẫn yêu cầu hủy được. COD đã thu tiền không được yêu cầu.
+6. Đơn trả trước đã thanh toán đang giao vẫn gửi yêu cầu được. Đơn Hoàn tất chỉ yêu cầu trả hàng; đơn hủy/trả chỉ xem lịch sử.
+7. Gọi duyệt hủy trước chấp nhận, thao tác sau chấp nhận hoặc dùng quản lý khác cửa hàng: đều phải bị từ chối.
 
-## 5. Trả toàn đơn
+## 5. Trả hàng, KPI và báo cáo
 
-1. Dùng đơn vừa hoàn tất ở bước 2 hoặc `DH-SEED-001` của Nam.
-2. Khách yêu cầu trả hàng và nhập lý do.
-3. Sau khi kiểm nhận đủ hàng, quản lý duyệt kèm ghi chú.
-4. Đơn Đã trả hàng, tồn tăng đúng số lượng, trạng thái ghi nhận hoàn tiền nếu đã thu tiền; doanh thu/hoa hồng bị loại khỏi báo cáo.
-5. Hoàn tiền thực tế cần thực hiện ngoài ứng dụng. Chưa có trả một phần/đổi trực tiếp.
+1. Hoàn tất một bill, xem doanh thu ngày hoàn tất và sổ doanh số nhân viên. Đặt KPI tháng cho số lượng vừa bán bằng mục tiêu để dễ kiểm chứng mức 100%.
+2. Nhân viên: <80% hưởng 0; 80–<100% hưởng 50% của cơ sở 5%; >=100% hưởng 100% cơ sở. Ví dụ doanh số 2.961.000 đ tại >=100% KPI: 148.050 đ.
+3. Quản lý: <80% =75% cơ sở bill phụ trách; 80–<100% =50% cơ sở +1% doanh số cửa hàng; >=100% =100% cơ sở +2%. Không cộng dồn các nhánh. Đơn vị KPI quản lý được cấu hình rõ trong màn hình.
+4. Khách yêu cầu trả toàn bill hoàn tất → quản lý kiểm nhận rồi duyệt. Tồn tăng một lần, doanh thu thuần giảm; cơ sở doanh số/hoa hồng đã ghi nhận không bị xóa do trả hàng (BR-51).
+5. Lọc tháng/quý/năm, tải CSV, đối chiếu tổng online/offline và nhân viên. Lọc một phần tháng vẫn xét toàn tháng KPI liên quan.
+6. Nhân viên xem KPI cá nhân sau bấm Làm mới; không có dữ liệu hoa hồng người khác.
 
-## 6. Nhân viên, ưu đãi và bổ sung
+## 6. Quản trị cửa hàng và điểm dừng mở rộng
 
-1. Quản lý → Nhân viên & hoa hồng → thêm nhân viên, sửa tỷ lệ, ngừng làm việc.
-2. Nhân viên đã ngừng không xuất hiện trong danh sách phân công mới.
-3. Quản lý → Khuyến mãi → tạo mã riêng Quận 1 đang hiệu lực; khách Quận 1 thấy và dùng được, khách Thủ Đức không thấy/không dùng được.
-4. Thử mã chưa đạt đơn tối thiểu hoặc hết hạn: backend từ chối.
-5. Quản lý chỉ xem được chương trình công ty WELCOME10, không sửa được.
-6. Tồn kho → Yêu cầu bổ sung → lưu số lượng/lý do → hiển thị Chờ công ty xử lý; đây là điểm dừng đã ghi trong CHUC_NANG.md.
+1. Thêm nhân viên bán hàng, đặt KPI tháng và cấp tài khoản; đăng nhập employee.html bằng tài khoản vừa cấp. Nhân viên kho không được cấp quyền POS.
+2. Sửa hồ sơ/ngừng làm việc; nhân viên ngừng không còn được phân công mới. Thủ Đức không xem/sửa người Quận 1.
+3. Tìm tồn, lọc tồn thấp, điều chỉnh tồn kèm lý do: lưu chênh lệch và người thao tác. Nhân viên chỉ đọc.
+4. Gửi bổ sung hàng: lưu và xem trạng thái Chờ công ty xử lý. Không có nút giả duyệt kho tổng; đây là điểm dừng thuộc hướng phát triển.
+5. Mã chung công ty chỉ xem; quản lý chỉ sửa mã cửa hàng mình. Tạo mã mới và kiểm tra khách đồng bộ.
+6. Khởi động lại server/db:setup không mất đơn/tồn/yêu cầu hiện có. Không mở file HTML trực tiếp.
 
-## 7. Phân quyền và dữ liệu lưu bền
+## Kiểm thử tự động và kiểm tra đã thực hiện
 
-1. Quản lý Thủ Đức không thấy đơn Quận 1; dùng API với ID đơn Quận 1 cũng bị chặn.
-2. Khách Hà không xem/yêu cầu hủy đơn của Nam.
-3. Khách truy cập API quản lý bị 403; chưa đăng nhập bị 401.
-4. Tải lại trình duyệt, dừng/mở lại Node.js: đơn, tồn, lịch sử, khuyến mãi và nhân viên đã lưu vẫn còn.
-5. Chạy `npm.cmd run db:setup` lần nữa không xóa dữ liệu cũ.
-6. Bấm các liên kết chính sách chưa triển khai ở footer sẽ thấy thông báo, không dẫn vào trang trống.
+`npm.cmd test`: 14 test, bao gồm nhóm tích hợp nhiều bước với MySQL thật trong database riêng. Kiểm tra quyền ba vai trò/cửa hàng/chủ đơn, thanh toán thành công/thất bại, Received/Paid/Finished, hủy hai bước, trả hàng không thu hồi hoa hồng, hồ sơ/đổi mật khẩu, điều kiện ưu đãi, POS, ngừng làm việc, schema idempotent và hai người tranh mua một đơn vị tồn.
 
-## Kiểm thử tự động
+Đã kiểm tra giao diện trên database thử riêng: đăng nhập ba vai trò, nhân viên lập bill COD → nhận hàng → quản lý thu tiền → hoàn tất → nhân viên làm mới thấy KPI tăng từ 1 lên 2 sản phẩm, doanh số từ 3.290.000 lên 4.180.000 đ. Đã xem lại bố cục lịch sử/lộ trình khách hàng theo bản gốc.
 
-```powershell
-npm.cmd test
-```
-
-Cần MySQL đang chạy và cổng 3010 trống. Bộ test tạo database `v0_store_test_<pid>` riêng, seed, chạy API, sau đó xóa database thử nghiệm. Bao gồm kiểm tra hai khách cùng mua sản phẩm chỉ còn một đơn vị: đúng một đơn thành công, đơn còn lại nhận 409, tồn không âm.
-
-## 8. Đối chiếu giao diện lịch sử và lộ trình
-
-1. Đăng nhập khách, bấm Đơn hàng: phải mở Trung tâm tài khoản với tab Lịch sử mua hàng được chọn, có đầy đủ thẻ đơn và thanh ba bước, không xuất hiện popup danh sách mới.
-2. Qua Thông tin cá nhân rồi bấm lại Lịch sử mua hàng: trạng thái tab đổi đúng, dữ liệu được nạp lại từ MySQL.
-3. Footer → Tra cứu đơn hàng: popup có ô Mã đơn hoặc Số điện thoại và nút Kiểm tra ngay như bản gốc. Tra mã đơn của mình hoặc số điện thoại nhận hàng sẽ hiển thị thẻ có lộ trình.
-4. Thử mã đơn thuộc khách khác: không hiển thị. Khi chưa đăng nhập, nhập mã sẽ chuyển sang đăng nhập và sau đó quay lại đúng mã đã tra.
-5. Đơn mới chỉ sáng bước đầu; đơn giao/nhận sáng bước tương ứng; đơn hủy/trả có mốc kết thúc. Các ngày/giờ phải phản ánh lịch sử thật.
-6. Sau đặt hàng, nút Xem lộ trình đơn hàng phải mở đúng mã vừa tạo. Yêu cầu hủy/trả từ popup sẽ quay lại đúng màn hình tra cứu sau khi gửi thành công.
-
-## 9. Hủy hai bước ở Đã xác nhận / Đang chuẩn bị
-
-1. Khách gửi yêu cầu, thẻ đơn hiển thị Chờ duyệt hủy. Quản lý vẫn có Phân công, Thu tiền, Tiếp tục xử lý và Chấp nhận hủy; chưa có Hoàn tất hủy.
-2. Thử một đơn: bấm Tiếp tục xử lý. Đơn chuyển bước tiếp theo, yêu cầu bị từ chối với lý do được ghi tự động. Khách không còn thấy Chờ duyệt hủy và tồn không tăng.
-3. Thử đơn khác: bấm Chấp nhận hủy. Đơn Đang hủy; phân công/thu tiền/chuyển trạng thái bị khóa và xuất hiện Hoàn tất hủy. Tồn chưa tăng.
-4. Bấm Hoàn tất hủy: đơn Đã hủy, tồn tăng đúng một lần, không còn thao tác bán hàng.
-5. Thử gọi hoàn tất trước chấp nhận, thao tác bán hàng sau chấp nhận, từ chối sau chấp nhận, bấm lặp hoặc sai cửa hàng: tất cả bị chặn.
-6. Kiểm tra cả danh sách đơn và trang Yêu cầu hủy & trả hàng để bảo đảm không có đường duyệt hủy một bước.
-7. Khởi động lại Node.js và Ctrl+F5 hai trang sau khi cập nhật.
+Đã cập nhật schema database v0_store và đối chiếu số dòng trước/sau: 14 orders, 14 order_items, 20 inventory, 6 service_requests, 16 inventory_movements; không reset các dữ liệu này. Bản ghi mô phỏng UI ở database thử không trộn vào v0_store.

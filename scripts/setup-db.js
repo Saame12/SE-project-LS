@@ -2,6 +2,8 @@ import {readFile} from 'node:fs/promises';
 import mysql from 'mysql2/promise';
 import {config} from '../backend/db.js';
 import {hash} from '../backend/domain.js';
+import {migrate} from '../backend/migrations.js';
+import {seedAcademic} from '../backend/academic-api.js';
 const dbName=config.database;
 if(!/^[a-zA-Z0-9_]+$/.test(dbName))throw Error('DB_NAME không hợp lệ');
 const db=await mysql.createConnection({...config,database:undefined,multipleStatements:true});
@@ -9,6 +11,7 @@ try{
  await db.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
  await db.query(`USE \`${dbName}\``);
  await db.query(await readFile(new URL('../database/schema.sql',import.meta.url),'utf8'));
+ await migrate(db);
  const [[{n}]]=await db.query('SELECT COUNT(*) n FROM users');
  if(n){console.log('Database đã có dữ liệu; giữ nguyên dữ liệu hiện có.');}else{
  await db.beginTransaction();
@@ -28,4 +31,5 @@ try{
  }
  await db.commit();console.log('Đã tạo schema và dữ liệu kiểm thử lưu thật trong MySQL. Mật khẩu các tài khoản demo: Demo@12345');
  }
+ await migrate(db);await seedAcademic(db);
 } catch(e){await db.rollback();throw e;}finally{await db.end();process.exit();}

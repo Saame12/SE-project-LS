@@ -3,7 +3,7 @@ import {$, esc, money, date, label, api, field, select, modal, customerOrderCard
 // Keep the original storefront markup/classes; all business data still comes from MySQL.
 let user = null, data = null;
 let store = Number(localStorage.getItem('v0_selected_store')) || 1;
-let category = '', brand = '', sorting = '', cart = {}, selectedPromo = '';
+let category = '', brand = '', sorting = '', minPrice = 0, maxPrice = Infinity, cart = {}, selectedPromo = '';
 let draft = {}, orderCache = [];
 let orderView = {type: 'history', query: ''};
 const cartIcon = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>';
@@ -54,6 +54,7 @@ function renderFilters() {
   const cats = ['', ...new Set(data.products.map(p => p.category))];
   $('#cats').innerHTML = cats.map(c => `<button class="chip" aria-pressed="${c === category}" data-category="${esc(c)}"><span>${esc(c || 'Tất cả')}</span><span class="chip-count">${data.products.filter(p => !c || p.category === c).length}</span></button>`).join('') +
     `<select id="so" aria-label="Sắp xếp sản phẩm"><option value="">Sắp xếp: Mặc định</option><option value="a">Giá: Thấp đến cao</option><option value="d">Giá: Cao đến thấp</option></select>` +
+    `<button class="chip" data-action="price-filter">Lọc khoảng giá</button>` +
     (brand ? `<button class="chip" aria-pressed="true" data-action="clear-brand">${esc(brand)} ×</button>` : '');
   $('#so').value = sorting;
   $('#so').onchange = e => { sorting = e.target.value; render(); };
@@ -62,7 +63,7 @@ function renderFilters() {
   }
 }
 function render() {
-  let products = data.products.filter(p => (!category || p.category === category) && (!brand || p.brand === brand) &&
+  let products = data.products.filter(p => p.price>=minPrice && p.price<=maxPrice && (!category || p.category === category) && (!brand || p.brand === brand) &&
     `${p.name} ${p.sku} ${p.brand} ${p.category}`.toLowerCase().includes($('#q').value.toLowerCase()));
   if (sorting) products.sort((a, b) => sorting === 'a' ? a.price - b.price : b.price - a.price);
   $('#g').innerHTML = products.map(p => `
@@ -132,10 +133,10 @@ function cartView(message = '', code = '') {
       <input name="customer_name" aria-label="Họ tên người nhận" placeholder="Họ và tên người nhận *" value="${esc(draft.customer_name || user?.name || '')}" required maxlength="120">
       <input name="phone" type="tel" aria-label="Số điện thoại" placeholder="Số điện thoại nhận hàng *" value="${esc(draft.phone || user?.phone || '')}" required>
       ${select('fulfillment', 'Hình thức nhận', [['pickup', 'Nhận tại cửa hàng'], ['delivery', 'Giao tận nơi']], draft.fulfillment || 'pickup')}
-      <input name="address" aria-label="Địa chỉ giao hàng" placeholder="Địa chỉ giao hàng chi tiết *" value="${esc(draft.address || '')}" maxlength="255" ${draft.fulfillment === 'delivery' ? 'required' : 'hidden'}>
+      <input name="address" aria-label="Địa chỉ giao hàng" placeholder="Địa chỉ giao hàng chi tiết *" value="${esc(draft.address || user?.address || '')}" maxlength="255" ${draft.fulfillment === 'delivery' ? 'required' : 'hidden'}>
       <div class="pay-section"><div class="pay-title">Phương thức thanh toán</div><div class="pay-list" role="radiogroup" aria-label="Phương thức thanh toán">
-      ${[['cash', '💵', 'Thanh toán khi nhận hàng (COD)', 'Tiền mặt khi nhận tại cửa hàng hoặc nhận giao hàng'], ['bank_transfer', '🏦', 'Chuyển khoản ngân hàng', 'Cửa hàng đối soát và xác nhận sau khi nhận tiền']].map(([id, icon, name, desc]) => `<label class="pay-opt${(draft.payment_method || 'cash') === id ? ' on' : ''}"><input type="radio" name="payment_method" value="${id}" ${(draft.payment_method || 'cash') === id ? 'checked' : ''}><span class="pay-ico">${icon}</span><span class="pay-info"><b>${name}</b><small>${desc}</small></span></label>`).join('')}
-      </div><div class="pay-note">${draft.payment_method === 'bank_transfer' ? 'Liên hệ cửa hàng để lấy thông tin chuyển khoản. Đơn chờ đối soát trước khi xác nhận đã thanh toán.' : 'Bạn kiểm tra hàng rồi thanh toán khi nhận hàng.'}</div></div>
+      ${[['cash', '💵', 'Thanh toán khi nhận hàng (COD)', 'Tiền mặt khi nhận tại cửa hàng hoặc nhận giao hàng'], ['bank_transfer', '🏦', 'Internet Banking/QR (mô phỏng)', 'Thanh toán mô phỏng trước khi cửa hàng xác nhận'], ['card','💳','Visa/Credit Card (mô phỏng)','Không yêu cầu thông tin thẻ thật']].map(([id, icon, name, desc]) => `<label class="pay-opt${(draft.payment_method || 'cash') === id ? ' on' : ''}"><input type="radio" name="payment_method" value="${id}" ${(draft.payment_method || 'cash') === id ? 'checked' : ''}><span class="pay-ico">${icon}</span><span class="pay-info"><b>${name}</b><small>${desc}</small></span></label>`).join('')}
+      </div><div class="pay-note">${draft.payment_method && draft.payment_method !== 'cash' ? 'Thanh toán được mô phỏng sau khi đặt hàng, không phát sinh giao dịch thật. Đơn chỉ được xác nhận sau khi mô phỏng thanh toán thành công.' : 'Bạn kiểm tra hàng rồi thanh toán khi nhận hàng.'}</div></div>
       <div class="err" id="checkout-error" role="alert"></div>
       ${user ? '<button class="btn-checkout" type="submit">Xác Nhận Đặt Hàng Ngay</button>' : '<button class="btn-checkout" type="button" data-action="login-checkout">Đăng nhập để đặt hàng</button>'}
     </form>` : '<div class="items-list empty-state"><h3>Giỏ hàng đang trống</h3><p>Hãy lựa chọn linh kiện để xây dựng bộ PC mơ ước của bạn.</p></div>');
@@ -155,8 +156,10 @@ function cartView(message = '', code = '') {
       const current = await api('/me');
       if (!current || current.role !== 'customer' || current.id !== expectedCustomerId) throw Error('Phiên khách hàng đã thay đổi. Vui lòng đăng nhập lại; giỏ hàng vẫn được giữ.');
       const result = await api('/orders', 'POST', {...draft, expected_customer_id: expectedCustomerId, store_id: store, promo_code: selectedPromo, items: Object.entries(cart).map(([id, quantity]) => ({product_id: Number(id), quantity}))});
+      const prepaid=draft.payment_method!=='cash';
       cart = {}; draft = {}; selectedPromo = ''; save();
       await refresh(); cartView('Mã đơn: ' + result.code + '. Cửa hàng sẽ tiếp nhận và xử lý đơn của bạn.', result.code);
+      if(prepaid)paymentSimulation(result);
     } catch (err) { $('#checkout-error', form).textContent = err.message; }
     finally { submit.disabled = false; }
   };
@@ -191,12 +194,13 @@ async function account(tab = 'info') {
     orderView = {type: 'history', query: ''};
   }
   closePanels(); $('#shop').hidden = true; $('#auth').hidden = true; $('#acct').hidden = false;
-  const passwordBody = '<p class="account-description">Chức năng đổi mật khẩu đang được phát triển.</p><form><label class="fl">Mật khẩu hiện tại<input type="password" disabled></label><label class="fl">Mật khẩu mới<input type="password" disabled></label><label class="fl">Xác nhận mật khẩu mới<input type="password" disabled></label><button class="btn-primary auth-submit" disabled>Cập nhật mật khẩu</button></form>';
-  const body = tab === 'pw' ? passwordBody : tab === 'hist' ? (orderCache.length ?
-    '<p class="account-description">Bạn có <b>' + orderCache.length + '</b> đơn hàng đã thực hiện.</p>' + orderCache.map(customerOrderCard).join('') :
-    '<div class="empty-state" style="padding:30px 10px"><p>Bạn chưa có đơn hàng nào tại V0 PC Store.</p></div>') :
-    '<label class="fl">Họ và tên<input value="' + esc(user.name) + '" readonly></label><label class="fl">Email<input value="' + esc(user.email) + '" readonly></label><label class="fl">Số điện thoại<input value="' + esc(user.phone) + '" readonly></label><div class="addr-box"><small>Hạng thành viên</small><span>' + esc(user.tier) + ' · Chi tiêu hoàn tất: ' + money(user.spend) + '</span></div><p class="account-description">Vàng: từ 10 triệu · Kim cương: từ 30 triệu.</p>';
-  $('#acct').innerHTML = '<div class="acard account-card"><h1>Trung tâm tài khoản</h1><p class="account-description">Xin chào, <b>' + esc(user.name) + '</b> (' + esc(user.email) + ')</p><div class="tabs"><button class="chip" aria-pressed="' + (tab === 'info') + '" data-action="account-info">Thông tin cá nhân</button><button class="chip" aria-pressed="' + (tab === 'pw') + '" data-action="account-password">Đổi mật khẩu</button><button class="chip" aria-pressed="' + (tab === 'hist') + '" data-action="orders">Lịch sử mua hàng</button></div>' + body + '<div class="account-actions"><button class="btn-secondary" data-action="shop">Quay lại mua sắm</button><button class="btn-secondary" data-action="logout">Đăng xuất</button></div></div>';
+  const optionalField=(name,title,value='',type='text')=>field(name,title,value,type).replace('live-field','fl').replace(' required','');
+  const passwordBody='<form id="password-profile">'+field('current_password','Mật khẩu hiện tại','','password').replace('live-field','fl')+field('new_password','Mật khẩu mới','','password','minlength="8"').replace('live-field','fl')+field('confirm_password','Xác nhận mật khẩu mới','','password').replace('live-field','fl')+'<p class="err" role="alert"></p><button class="btn-primary auth-submit">Cập nhật mật khẩu</button></form>';
+  const info='<form id="profile-form">'+field('name','Họ và tên',user.name).replace('live-field','fl')+field('email','Email',user.email,'email').replace('live-field','fl')+field('phone','Số điện thoại',user.phone,'tel').replace('live-field','fl')+optionalField('address','Địa chỉ giao hàng mặc định',user.address)+optionalField('dob','Ngày sinh',user.dob||'','date')+select('gender','Giới tính',[['','Chưa cung cấp'],['male','Nam'],['female','Nữ'],['other','Khác']],user.gender)+optionalField('occupation','Nghề nghiệp',user.occupation)+'<p class="err" role="alert"></p><button class="btn-primary auth-submit">Lưu thông tin</button></form><div class="addr-box"><small>Hạng thành viên</small><span>'+esc(user.tier)+' · Chi tiêu hoàn tất: '+money(user.spend)+'</span></div>';
+  const body=tab==='pw'?passwordBody:tab==='hist'?(orderCache.length?'<p class="account-description">Bạn có <b>'+orderCache.length+'</b> đơn hàng đã thực hiện.</p>'+orderCache.map(customerOrderCard).join(''):'<div class="empty-state">Bạn chưa có đơn hàng.</div>'):info;
+  $('#acct').innerHTML='<div class="acard account-card"><h1>Trung tâm tài khoản</h1><p class="account-description">Xin chào, <b>'+esc(user.name)+'</b> ('+esc(user.email)+')</p><div class="tabs"><button class="chip" aria-pressed="'+(tab==='info')+'" data-action="account-info">Thông tin cá nhân</button><button class="chip" aria-pressed="'+(tab==='pw')+'" data-action="account-password">Đổi mật khẩu</button><button class="chip" aria-pressed="'+(tab==='hist')+'" data-action="orders">Lịch sử mua hàng</button></div>'+body+'<div class="account-actions"><button class="btn-secondary" data-action="shop">Quay lại mua sắm</button><button class="btn-secondary" data-action="logout">Đăng xuất</button></div></div>';
+  const form=$('#profile-form')||$('#password-profile');
+  if(form)form.onsubmit=async e=>{e.preventDefault();const b=Object.fromEntries(new FormData(form)),submit=$('button',form);submit.disabled=true;try{if(tab==='pw'){if(b.new_password!==b.confirm_password)throw Error('Mật khẩu xác nhận không trùng khớp');await api('/me/password','POST',b);toast('Đã đổi mật khẩu; các phiên khác đã đăng xuất');await account('pw');}else{await api('/me','PUT',b);await refresh();await account();toast('Đã lưu hồ sơ');}}catch(err){$('.err',form).textContent=err.message;}finally{submit.disabled=false;}};
   window.scrollTo({top: 0, behavior: 'smooth'});
 }
 async function orders() {
@@ -220,10 +224,10 @@ async function track(query = '') {
 function requestOrder(type, id) {
   const returnView = {...orderView};
   closePanels();
-  const immediate = type === 'cancel' && orderCache.find(o => o.id === Number(id))?.status === 'pending';
-  const title = type === 'cancel' ? (immediate ? 'Hủy đơn' : 'Yêu cầu hủy đơn') : 'Yêu cầu trả sản phẩm';
-  const explanation = immediate ? '<p class="customer-tracking-description">Đơn đang chờ xác nhận. Xác nhận hủy sẽ hủy đơn ngay và hoàn tồn, không cần chờ cửa hàng duyệt.</p>' : '';
-  $('#ov').innerHTML = '<div class="modal tk" role="dialog" aria-modal="true" aria-label="' + title + '"><div class="modal-top"><h2 class="customer-tracking-title">' + title + '</h2><button class="close-btn" data-action="close-panels" aria-label="Đóng yêu cầu">×</button></div>' + explanation + '<form id="customer-order-request" class="customer-order-request-form"><label class="fl">Lý do yêu cầu<input name="reason" required maxlength="255"></label><p class="err" role="alert"></p><button type="submit">' + (immediate ? 'Xác nhận hủy đơn' : 'Gửi yêu cầu') + '</button></form></div>';
+
+  const title = type === 'cancel' ? 'Yêu cầu hủy đơn' : 'Yêu cầu trả sản phẩm';
+  const explanation = type==='cancel'?'<p class="customer-tracking-description">Theo quy tắc đồ án: đơn trả trước được yêu cầu hủy trước Hoàn tất; COD chỉ được yêu cầu hủy khi chưa ghi nhận thanh toán. Cửa hàng sẽ xem xét yêu cầu.</p>':'';
+  $('#ov').innerHTML = '<div class="modal tk" role="dialog" aria-modal="true" aria-label="' + title + '"><div class="modal-top"><h2 class="customer-tracking-title">' + title + '</h2><button class="close-btn" data-action="close-panels" aria-label="Đóng yêu cầu">×</button></div>' + explanation + '<form id="customer-order-request" class="customer-order-request-form"><label class="fl">Lý do yêu cầu<input name="reason" required maxlength="255"></label><p class="err" role="alert"></p><button type="submit">' + 'Gửi yêu cầu' + '</button></form></div>';
   $('#ov').classList.add('on');
   $('[name=reason]').focus();
   $('#customer-order-request').onsubmit = async e => {
@@ -242,9 +246,22 @@ function requestOrder(type, id) {
 }
 function promos() {
   closePanels();
-  modal('Kho Voucher Ưu Đãi', `<p class="account-description">Ưu đãi áp dụng tại ${esc(storeName())}.</p>` + (data.promotions.map(p => `<div class="ord"><div class="oh"><strong class="brand-name-tag">${esc(p.code)}</strong><strong class="stock-label">Giảm ${p.percent}%</strong></div><b>${esc(p.name)}</b><p class="account-description">Đơn từ ${money(p.min_total)} · Giảm tối đa ${money(p.max_discount)}<br>Hạn dùng: ${new Date(p.ends_at).toLocaleDateString('vi-VN')}</p><button class="btn-primary" data-action="choose-promo" data-id="${esc(p.code)}">Áp dụng ngay</button></div>`).join('') || '<p>Chưa có khuyến mãi tại cửa hàng này.</p>'));
+  const conditions=p=>[p.min_age!=null?'Tuổi từ '+p.min_age:'',p.max_age!=null?'Tuổi tối đa '+p.max_age:'',p.gender?({male:'Nam',female:'Nữ',other:'Khác'})[p.gender]:'',p.occupation||'',p.channel&&p.channel!=='all'?'Chỉ '+p.channel:''].filter(Boolean).map(esc).join(' · ');
+  modal('Kho Voucher Ưu Đãi', `<p class="account-description">Ưu đãi áp dụng tại ${esc(storeName())}.</p>` + (data.promotions.map(p => `<div class="ord"><div class="oh"><strong class="brand-name-tag">${esc(p.code)}</strong><strong class="stock-label">Giảm ${p.percent}%</strong></div><b>${esc(p.name)}</b><p class="account-description">Đơn từ ${money(p.min_total)} · Giảm tối đa ${money(p.max_discount)}<br>${conditions(p)}<br>Hạn dùng: ${new Date(p.ends_at).toLocaleDateString('vi-VN')}</p><button class="btn-primary" data-action="choose-promo" data-id="${esc(p.code)}">Áp dụng ngay</button></div>`).join('') || '<p>Chưa có khuyến mãi tại cửa hàng này.</p>'));
+}
+function paymentSimulation(order){
+ closePanels();
+ $('#ov').innerHTML='<div class="modal tk" role="dialog" aria-modal="true"><div class="modal-top"><h2>Thanh toán mô phỏng</h2><button class="close-btn" data-action="close-panels" aria-label="Đóng">×</button></div><p>'+esc(order.code)+' · '+money(order.total)+'</p><p class="customer-tracking-description">Dùng cho đồ án. Không nhập thông tin thẻ thật và không phát sinh giao dịch tiền thật.</p><p id="simulation-message" class="err" role="alert"></p><div class="account-actions"><button class="btn-primary" id="payment-ok">Mô phỏng thành công</button><button class="btn-secondary" id="payment-fail">Mô phỏng thất bại</button></div></div>';
+ $('#ov').classList.add('on');
+ for(const [id,outcome] of [['payment-ok','success'],['payment-fail','failure']])$('#'+id).onclick=()=>run(async()=>{const buttons=[...$('#ov').querySelectorAll('button')];buttons.forEach(b=>b.disabled=true);try{await api('/orders/'+order.id+'/pay-simulate','POST',{outcome});if(outcome==='success'){localStorage.setItem('v0_orders_changed',String(Date.now()));toast('Thanh toán mô phỏng thành công');await track(order.code);}else $('#simulation-message').textContent='Thanh toán thất bại (mô phỏng). Chưa thu tiền; bạn có thể thử lại.';}finally{buttons.forEach(b=>b.disabled=false);}});
+}
+function filterPrice(){
+ closePanels();$('#ov').innerHTML='<div class="modal tk" role="dialog" aria-modal="true"><div class="modal-top"><h2>Lọc khoảng giá</h2><button class="close-btn" data-action="close-panels">×</button></div><form id="price-filter-form" class="customer-order-request-form"><label class="fl">Giá từ<input name="min" type="number" min="0" value="'+minPrice+'"></label><label class="fl">Giá đến<input name="max" type="number" min="0" value="'+(Number.isFinite(maxPrice)?maxPrice:'')+'" placeholder="Không giới hạn"></label><p class="err"></p><button>Áp dụng</button></form></div>';$('#ov').classList.add('on');
+ $('#price-filter-form').onsubmit=e=>{e.preventDefault();const b=Object.fromEntries(new FormData(e.currentTarget)),low=Number(b.min||0),high=b.max===''?Infinity:Number(b.max);if(low<0||high<low){$('.err',e.currentTarget).textContent='Khoảng giá không hợp lệ';return;}minPrice=low;maxPrice=high;render();closePanels();};
 }
 async function action(name, id) {
+  if(name==='price-filter')return filterPrice();
+  if(name==='pay-simulate')return paymentSimulation(orderCache.find(o=>o.id===Number(id)));
   if (name === 'shop') return showShop();
   if (name === 'close-panels') return closePanels();
   if (name === 'brand') { brand = id; renderFilters(); render(); return; }
@@ -253,6 +270,7 @@ async function action(name, id) {
   if (name === 'login-checkout') return login(async () => cartView());
   if (name === 'logout') { await api('/auth/logout', 'POST'); draft = {}; await refresh(); showShop(); return toast('Đã đăng xuất'); }
   if (['add', 'add-cart', 'add-detail'].includes(name)) {
+    user=await api('/me');if(!user)return login(()=>action(name,id));
     const p = data.products.find(p => p.id === Number(id));
     if (!p || (cart[id] || 0) >= Math.min(p.quantity, 100)) return toast('Không thể thêm vượt tồn kho khả dụng.');
     cart[id] = (cart[id] || 0) + 1; save();
@@ -298,10 +316,10 @@ for (const a of document.querySelectorAll('a[href="#!"]')) a.onclick = e => {
   e.preventDefault(); modal('Đang phát triển', `<p>${esc(a.textContent)}: chức năng đang được phát triển.</p>`);
 };
 for (const tag of document.querySelectorAll('.pay-tag')) {
-  if (/Visa|VNPAY|MoMo/.test(tag.textContent)) {
+  if (/VNPAY|MoMo/.test(tag.textContent)) {
     tag.title = 'Đang phát triển — chưa khả dụng khi đặt hàng';
     tag.setAttribute('role', 'button'); tag.tabIndex = 0;
-    tag.onclick = () => modal('Đang phát triển', '<p>Phương thức này chưa khả dụng. Bạn có thể chọn tiền mặt hoặc chuyển khoản khi đặt hàng.</p>');
+    tag.onclick = () => modal('Đang phát triển', '<p>Phương thức này chưa khả dụng. Bạn có thể chọn COD, thẻ hoặc Internet Banking/QR mô phỏng khi đặt hàng.</p>');
     tag.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tag.click(); } };
   }
 }
