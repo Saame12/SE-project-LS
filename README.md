@@ -13,7 +13,7 @@ Mật khẩu ứng dụng mẫu: `Demo@12345`. Mỗi vai trò có cookie riêng 
 ## Khởi động
 
 ```powershell
-cd C:\Users\sangl\source\repos\SE-project
+cd C:\Users\SE-project
 npm.cmd install
 # Chỉ khi chưa có .env: sao chép .env.example thành .env và điền MySQL.
 npm.cmd run db:setup
